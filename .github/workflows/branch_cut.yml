@@ -1,0 +1,43 @@
+name: Branch Cut CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: App Version Code (e.g., 301)
+        required: true
+        type: string
+      version_name:
+        description: App Version Name (e.g., 3.0.1)
+        required: true
+        type: string
+      jira_issue:
+        description: Jira Issue ID (e.g., TP-12345)
+        required: true
+        type: string
+      branch_prefix:
+        description: Branch Prefix (e.g., release-)
+        required: true
+        default: 'release-'
+        type: string
+
+jobs:
+  branch-cut:
+    runs-on: [ default ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Git Credentials for @${{ github.actor }}
+        run: |
+          git config --global user.email "${GITHUB_ACTOR//-/.}@navi.com"
+          git config --global user.name "$GITHUB_ACTOR"
+      - name: Checkout ${{ github.event.inputs.branch_prefix }}${{ github.event.inputs.version_name }} from ${{ github.ref_name }}
+        run: git checkout -b ${{ github.event.inputs.branch_prefix }}${{ github.event.inputs.version_name }}
+      - name: Update Version Name (${{ github.event.inputs.version_name }}) & Version Code (${{ github.event.inputs.version_code }})
+        run: |
+          sed -i 's/def VERSION_NAME = "[0-9].*"/def VERSION_NAME = "${{ github.event.inputs.version_name }}"/g' app/build.gradle
+          sed -i 's/def VERSION_CODE = [0-9].*/def VERSION_CODE = ${{ github.event.inputs.version_code }}/g' app/build.gradle
+      - name: Commit Version Changes
+        run: git commit app/build.gradle -m "${{ github.event.inputs.jira_issue }} | Bump Project Version to ${{ github.event.inputs.version_name }} (${{ github.event.inputs.version_code }})"
+      - name: Push ${{ github.event.inputs.branch_prefix }}${{ github.event.inputs.version_name }} Branch
+        run: git push -u origin ${{ github.event.inputs.branch_prefix }}${{ github.event.inputs.version_name }}
