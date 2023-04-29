@@ -1,0 +1,17 @@
+name: Checklist CI
+
+on:
+  pull_request:
+    branches: [ master, release-*, development ]
+    types: [ edited, opened, reopened, synchronize ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  validate-checklists:
+    runs-on: [ default ]
+    steps:
+      - name: Validate Checklists
+        uses: synced-actions/checkmate@master
